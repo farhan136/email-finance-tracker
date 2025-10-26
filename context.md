@@ -19,7 +19,85 @@ A Node.js + Express API that fetches bank transaction emails (BCA, Mandiri) via 
   - Swagger: src/config/swaggerConfig.js
   - Parsing rules (regex/subjects): src/config/parserRules.js
   - Validation config (allowed enums): src/config/validation.config.json
-- Migrations: db-migrate (migrations/*)
+|- Migrations: db-migrate (migrations/*)
+
+## Architecture Flow
+```mermaid
+flowchart TB
+  subgraph Client
+    A[User/Client]
+  end
+
+  subgraph Express["Express Server"]
+    R1[POST /api/transactions/fetch]
+    R2[POST /api/transactions]
+    R3[GET /api/transactions]
+    R4[POST /api/transactions/sync-notion]
+    DOC[GET /api-docs]
+  end
+
+  subgraph Controllers
+    C1[triggerFetch]
+    C2[createManualTransaction]
+    C3[getTransactions]
+    C4[triggerNotionSync]
+  end
+
+  subgraph Middleware
+    M1[validateTransaction]
+  end
+
+  subgraph Services
+    S1[emailService.processEmails]
+    S2[dbService get/save/list/state/sync flags]
+    S3[taskStateService in-memory locks]
+    S4[notionService.syncTransactionsToNotion]
+  end
+
+  subgraph Config
+    P[parserRules]
+    V[validation.config.json]
+    SW[swaggerConfig]
+    DBPOOL[config/database.js mysql2 pool]
+  end
+
+  subgraph External
+    IMAP[(IMAP Server)]
+    MYSQL[(MySQL)]
+    NOTION[(Notion Database)]
+  end
+
+  A --> R1
+  A --> R2
+  A --> R3
+  A --> R4
+  A --> DOC
+
+  R1 --> C1
+  R2 --> M1
+  M1 --> C2
+  R3 --> C3
+  R4 --> C4
+
+  C1 --> S3:::lock
+  C1 --> S1
+  C2 --> S2
+  C3 --> S2
+  C4 --> S3:::lock
+  C4 --> S4
+
+  S1 --> IMAP
+  S1 --> P
+  S1 --> S2
+  S2 --> DBPOOL
+  DBPOOL --> MYSQL
+  S4 --> S2
+  S4 --> NOTION
+
+  DOC --> SW
+
+  classDef lock fill:#ffe4b5,stroke:#cc8800,color:#000
+```
 
 ---
 
