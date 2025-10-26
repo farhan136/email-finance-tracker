@@ -140,9 +140,32 @@ const getTransactionsList = async (page, limit, filters) => {
   };  
 };
 
+/**
+ * Fetches all transactions that have not yet been synced to Notion.
+ * @returns {Array} A list of transaction objects.
+ */
+const getUnsyncedTransactions = async () => {
+  const sql = "SELECT * FROM transactions WHERE is_synced_to_notion = FALSE ORDER BY transaction_date ASC LIMIT 50"; // Limit to 50 per batch
+  const [rows] = await pool.query(sql);
+  return rows;
+};
+
+/**
+ * Marks a list of transactions as synced to Notion.
+ * @param {Array<number>} ids - An array of transaction IDs.
+ */
+const markTransactionsAsSynced = async (ids) => {
+  if (ids.length === 0) return;
+  // Using '?' with an array automatically creates a '(id1, id2, ...)' list
+  const sql = "UPDATE transactions SET is_synced_to_notion = TRUE WHERE id IN (?)";
+  await pool.query(sql, [ids]);
+};
+
 module.exports = {
   getLastFetchTimestamp,
   updateLastFetchTimestamp,
   saveTransaction,
-  getTransactionsList
+  getTransactionsList,
+  getUnsyncedTransactions,
+  markTransactionsAsSynced
 };

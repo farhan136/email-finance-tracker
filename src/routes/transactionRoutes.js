@@ -5,7 +5,8 @@ const router = express.Router();
 const { 
   triggerFetch, 
   createManualTransaction,
-  getTransactions
+  getTransactions,
+  triggerNotionSync
 } = require('../controllers/transactionController');
 const { validateTransaction } = require('../middleware/validation.js');
 
@@ -217,5 +218,22 @@ router.post('/', validateTransaction, createManualTransaction);
  *         description: Internal Server Error
  */
 router.get('/', getTransactions);
+
+/**
+ * @swagger
+ * /api/transactions/sync-notion:
+ *   post:
+ *     summary: Sync transactions to Notion
+ *     tags: [Notion]
+ *     description: Triggers a background process to sync all unsynced local transactions to the configured Notion database.
+ *     responses:
+ *       '202':
+ *         description: Accepted. Notion sync has been started.
+ *       '409':
+ *         description: A sync process is already running.
+ *       '500':
+ *         description: Internal Server Error
+ */
+router.post('/sync-notion', triggerNotionSync);
 
 module.exports = router;

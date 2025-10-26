@@ -6,7 +6,7 @@ const { format } = require('date-fns'); // Still used for logging
 const { convert } = require('html-to-text');
 const { getLastFetchTimestamp, updateLastFetchTimestamp, saveTransaction } = require('./dbService');
 const { PARSER_RULES } = require('../config/parserRules.js');
-const fetchState = require('./fetchStateService');
+const taskState = require('./taskStateService');
 
 // --- DELETED ---
 // Fungsi parseTransactionDate yang rumit sudah tidak diperlukan lagi.
@@ -169,7 +169,7 @@ const processEmails = async () => {
 
     // No matter what happens (success or error),
     // always release the lock when the process is finished.
-    fetchState.endFetch();
+    taskState.endTask('email_fetch');
   }
 };
 

@@ -5,33 +5,31 @@ const {
   saveTransaction, 
   getTransactionsList
 } = require('../services/dbService');
-const fetchState = require('../services/fetchStateService');
+const { syncTransactionsToNotion } = require('../services/notionService');
+const taskState = require('../services/taskStateService');
+
 
 /**
- * Controller to manually trigger the email fetching process.
+ * Controller to trigger the email fetching process.
  */
 const triggerFetch = async (req, res) => {
+  const TASK_NAME = 'email_fetch'; // Define task name
   
-  // Check if a process is already running.
-  if (fetchState.isFetching()) {
-    // 409 Conflict is the correct HTTP status for "try again later"
+  // Use new function name
+  if (taskState.isTaskRunning(TASK_NAME)) {
     return res.status(409).json({ 
-      message: 'A fetch process is already running. Please wait until it is finished.' 
+      message: 'An email fetch process is already running. Please wait.' 
     });
   }
-  
-  try {
-    console.log('API endpoint hit: Starting email fetch in the background...');
-    
-    fetchState.startFetch(); 
-    
-    processEmails();
 
+  try {
+    taskState.startTask(TASK_NAME); // Use new function name
+    processEmails();
     res.status(202).json({ 
       message: 'Accepted. Email processing has been started.' 
     });
   } catch (error) {
-    fetchState.endFetch(); 
+    taskState.endTask(TASK_NAME); // Use new function name
     console.error('Error triggering email fetch:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
@@ -99,8 +97,40 @@ const getTransactions = async (req, res) => {
   }
 };
 
+/**
+ * Controller to trigger the Notion DB sync process.
+ */
+const triggerNotionSync = async (req, res) => {
+  const TASK_NAME = 'notion_sync';
+
+  if (taskState.isTaskRunning(TASK_NAME)) {
+    return res.status(409).json({
+      message: 'A Notion sync process is already running. Please wait.'
+    });
+  }
+
+  try {
+    taskState.startTask(TASK_NAME);
+    // We call this *without* await so the user gets an instant response
+    // The 'finally' block inside syncTransactionsToNotion will end the task
+    syncTransactionsToNotion().finally(() => {
+      taskState.endTask(TASK_NAME);
+    });
+
+    res.status(202).json({
+      message: 'Accepted. Notion sync has been started.'
+    });
+
+  } catch (error) {
+    taskState.endTask(TASK_NAME);
+    console.error('Error triggering Notion sync:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 module.exports = {
   triggerFetch,
   createManualTransaction,
-  getTransactions
+  getTransactions,
+  triggerNotionSync
 };
