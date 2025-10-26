@@ -1,0 +1,4 @@
+{
+  "allowed_banks": ["BCA", "Mandiri"],
+  "allowed_flows": ["IN", "OUT"]
+}
